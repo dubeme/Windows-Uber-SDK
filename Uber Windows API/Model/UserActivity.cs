@@ -1,64 +1,62 @@
-﻿
-using System.Runtime.Serialization;
-namespace Uwapi.Model
+﻿namespace Uwapi.Model
 {
     /// <summary>
     /// A user's activity with Uber
     /// </summary>
-    public class UserActivity
+    public sealed class UserActivity
     {
         /// <summary>
         /// The activity ID.
         /// </summary>
-        [DataMember(Name = "uuid", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "uuid")]
         public string uuid { get; set; }
 
         /// <summary>
         ///  
         /// </summary>
-        [DataMember(Name = "request_time", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "request_time")]
         public long RequestTime { get; set; }
 
         /// <summary>
         /// The id of the product that was used
         /// </summary>
-        [DataMember(Name = "product_id", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "product_id")]
         public string ProductId { get; set; }
 
         /// <summary>
         /// The status of this activity.
         /// </summary>
-        [DataMember(Name = "status", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "status")]
         public string Status { get; set; }
 
         /// <summary>
         /// The distance that was travelled in miles.
         /// </summary>
-        [DataMember(Name = "distance", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "distance")]
         public float Distance { get; set; }
 
         /// <summary>
         /// The start time.
         /// </summary>
-        [DataMember(Name = "start_time", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "start_time")]
         public long StartTime { get; set; }
 
         /// <summary>
         /// The start location.
         /// </summary>
-        [DataMember(Name = "start_location", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "start_location")]
         public UberLocation StartLocation { get; set; }
 
         /// <summary>
         /// The end time.
         /// </summary>
-        [DataMember(Name = "end_time", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "end_time")]
         public long EndTime { get; set; }
 
         /// <summary>
         /// The end location.
         /// </summary>
-        [DataMember(Name = "end_location", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "end_location")]
         public UberLocation EndLocation { get; set; }
     }
 }

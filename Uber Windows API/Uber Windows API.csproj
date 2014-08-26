@@ -35,24 +35,32 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- A reference to the entire .NET Framework is automatically included -->
-    <Folder Include="ResponseObject\" />
   </ItemGroup>
   <ItemGroup>
     <TargetPlatform Include="WindowsPhoneApp, Version=8.1" />
     <TargetPlatform Include="Windows, Version=8.1" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Core\Endpoints.cs" />
-    <Compile Include="Core\Urls.cs" />
-    <Compile Include="Model\TimeEstimate.cs" />
+    <Compile Include="Model\UserHistory.cs" />
+    <Compile Include="Model\TimeEstimates.cs" />
     <Compile Include="Model\UberLocation.cs" />
     <Compile Include="Model\UserActivity.cs" />
     <Compile Include="Model\UserProfile.cs" />
     <Compile Include="Model\PriceEstimates.cs" />
     <Compile Include="Model\ProductType.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RequestObject\IUberRequest.cs" />
+    <Compile Include="ResponseModel\PriceEstimatesResponse.cs" />
+    <Compile Include="ResponseModel\ProductTypeResponse.cs" />
+    <Compile Include="ResponseModel\TimeEstimatesResponse.cs" />
     <Compile Include="UberClient.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>packages\Newtonsoft.Json.6.0.4\lib\portable-net45+wp80+win8+wpa81\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\Portable\$(TargetFrameworkVersion)\Microsoft.Portable.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

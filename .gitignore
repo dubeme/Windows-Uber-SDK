@@ -212,3 +212,9 @@ $RECYCLE.BIN/
 *.msi
 *.msm
 *.msp
+
+
+
+#Ignore these for now
+UWAPI Consumer/
+BlankSharedApp1/

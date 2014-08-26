@@ -1,28 +1,26 @@
-﻿using System.Runtime.Serialization;
-
-namespace Uwapi.Model
+﻿namespace Uwapi.Model
 {
     /// <summary>
     /// Represents a start/stop location
     /// </summary>
-    public class UberLocation
+    public sealed class UberLocation
     {
         /// <summary>
         /// 
         /// </summary>
-        [DataMember(Name = "address", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "address")]
         public string Address { get; set; }
 
         /// <summary>
         /// 
         /// </summary>
-        [DataMember(Name = "latitude", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "latitude")]
         public float Latitude { get; set; }
 
         /// <summary>
         /// 
         /// </summary>
-        [DataMember(Name = "longitude", IsRequired = true)]
+        [Newtonsoft.Json.JsonProperty(PropertyName = "longitude")]
         public float Longitude { get; set; }
     }
 }
