@@ -3,7 +3,7 @@
     /// <summary>
     /// The user's lifetime activity with Uber
     /// </summary>
-    public sealed class UserHistory
+    public sealed class UserActivities
     {
         /// <summary>
         /// Position in pagination
@@ -29,6 +29,6 @@
         /// requests (in miles), as well as the product type that was requested.
         /// </summary>
         [Newtonsoft.Json.JsonProperty(PropertyName = "history")]
-        public System.Collections.Generic.IList<UserActivity> UserActivities { get; set; }
+        public System.Collections.Generic.IList<UserActivity> Activities { get; set; }
     }
 }

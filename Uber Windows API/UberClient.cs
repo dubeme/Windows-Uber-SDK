@@ -8,6 +8,7 @@ using Uwapi.Model;
 using Uwapi.ResponseModel;
 using Windows.Foundation;
 using Windows.Web.Http;
+using System.Linq;
 
 namespace Uwapi
 {
@@ -26,44 +27,35 @@ namespace Uwapi
 
         #endregion Endpoints
 
+        #region Fields
+
         private string uberServerToken = string.Empty;
         private string uberClientId = string.Empty;
-        private string uberSecret = string.Empty;
+        private string uberRedirectUrl = string.Empty;
 
-        public UberClient(string serverToken)
-        {
-            this.uberServerToken = serverToken;
-        }
+        #endregion Fields
+
+        #region Constructor
 
         /// <summary>
-        /// Performs a request to the Uber API
+        /// 
         /// </summary>
-        /// <param name="endpoint">The endpoint that is being called.</param>
-        /// <param name="parameter">The parameters to be passed to the request.</param>
-        /// <returns>The JSON result of the request.</returns>
-        private IAsyncOperation<string> GetResponseJsonAsync(string endpoint, string parameter = null)
+        /// <param name="serverToken">The secrete token for your app</param>
+        /// <param name="clientId">The client ID of your app</param>
+        /// <param name="redirectURL">
+        ///     The URI we will redirect back to after an authorization by the resource owner. 
+        ///     The base of the URI must match the redirect_uri used during the registration of your application.
+        /// </param>
+        public UberClient(string serverToken, string clientId, string redirectURL)
         {
-            return Task.Run<string>(async () =>
-            {
-                // Try the request, if any exception return an empty string
-                try
-                {
-                    StringBuilder url = new StringBuilder(string.Format("https://api.uber.com/{0}?server_token={1}", endpoint, this.uberServerToken));
-
-                    if (parameter != null)
-                    {
-                        url.AppendFormat("&{0}", parameter);
-                    }
-                    return await (new HttpClient()).GetStringAsync(new Uri(url.ToString()));
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine(ex.Message);
-                }
-
-                return string.Empty;
-            }).AsAsyncOperation();
+            this.uberServerToken = serverToken;
+            this.uberClientId = clientId;
+            this.uberRedirectUrl = redirectURL;
         }
+
+        #endregion Constructor
+
+        #region Uber Endpoints
 
         /// <summary>
         /// The Products endpoint returns information about the Uber products offered at a given location.
@@ -76,15 +68,13 @@ namespace Uwapi
             return Task.Run<IList<ProductType>>(async () =>
             {
                 string parameter = string.Format("latitude={0}&longitude={1}", latitude, longitude);
-
                 string result = await this.GetResponseJsonAsync(ProductTypesEndpoint, parameter);
 
                 if (!string.IsNullOrWhiteSpace(result))
                 {
                     try
                     {
-                        var t = JsonConvert.DeserializeObject<ProductTypeResponse>(result);
-                        return Newtonsoft.Json.JsonConvert.DeserializeObject<Newtonsoft.Json.Linq.JObject>(result)["products"].ToObject<List<ProductType>>();
+                        return JsonConvert.DeserializeObject<ProductTypeResponse>(result).Products;
                     }
                     catch (Exception) { }
                 }
@@ -96,17 +86,28 @@ namespace Uwapi
         /// <summary>
         /// The Price Estimates endpoint returns an estimated price range for each product offered at a given location.
         /// </summary>
-        /// <param name="start_latitude">Latitude component of start location</param>
-        /// <param name="start_longitude">Longitude component of start location</param>
-        /// <param name="end_latitude">Latitude component of end location</param>
-        /// <param name="end_longitude">Longitude component of end location</param>
+        /// <param name="startLatitude">Latitude component of start location</param>
+        /// <param name="startLongitude">Longitude component of start location</param>
+        /// <param name="endLatitude">Latitude component of end location</param>
+        /// <param name="endLongitude">Longitude component of end location</param>
         /// <returns></returns>
-        public IAsyncOperation<IList<PriceEstimates>> GetPriceEstimatesAsync(float start_latitude, float start_longitude, float end_latitude, float end_longitude)
+        public IAsyncOperation<IList<PriceEstimates>> GetPriceEstimatesAsync(float startLatitude, float startLongitude, float endLatitude, float endLongitude)
         {
             return Task.Run<IList<PriceEstimates>>(async () =>
             {
-                string parameters = string.Format("start_latitude={0}&start_longitude={1}&end_latitude={2}&end_longitude={3}", start_latitude, start_longitude, end_latitude, end_longitude);
+                string format = "start_latitude={0}&start_longitude={1}&end_latitude={2}&end_longitude={3}";
+                string parameters = string.Format(format, startLatitude, startLongitude, endLatitude, endLongitude);
                 string result = await this.GetResponseJsonAsync(PricetEstimatsEndpoint, parameters);
+
+                if (!string.IsNullOrWhiteSpace(result))
+                {
+                    try
+                    {
+                        return JsonConvert.DeserializeObject<PriceEstimatesResponse>(result).Prices;
+                    }
+                    catch (Exception) { }
+                }
+
                 return null;
             }).AsAsyncOperation();
         }
@@ -119,12 +120,33 @@ namespace Uwapi
         /// <param name="customer_uuid">Unique customer identifier to be used for experience customization</param>
         /// <param name="product_id">Unique identifier representing a specific product for a given latitude & longitude</param>
         /// <returns></returns>
-        public IAsyncOperation<IList<TimeEstimates>> GetTimeEstimatesAsync(float start_latitude, float start_longitude, string customer_uuid, string product_id)
+        public IAsyncOperation<IList<TimeEstimates>> GetTimeEstimatesAsync(float startLatitude, float startLongitude, string customerUUID, string productId)
         {
             return Task.Run<IList<TimeEstimates>>(async () =>
             {
-                string parameter = string.Format("start_latitude={0}&start_longitude={1}&customer_uuid={2}&product_id={3}", start_latitude, start_longitude, customer_uuid, product_id);
-                string result = await this.GetResponseJsonAsync(TimeEstimatesEndpoint, parameter);
+                StringBuilder parameter = new StringBuilder(string.Format("start_latitude={0}&start_longitude={1}", startLatitude, startLongitude));
+
+                if (!string.IsNullOrWhiteSpace(customerUUID))
+                {
+                    parameter.AppendFormat("&customer_uuid={0}", customerUUID);
+                }
+
+                if (!string.IsNullOrWhiteSpace(productId))
+                {
+                    parameter.AppendFormat("&product_id={0}", productId);
+                }
+
+                string result = await this.GetResponseJsonAsync(TimeEstimatesEndpoint, parameter.ToString());
+
+                if (!string.IsNullOrWhiteSpace(result))
+                {
+                    try
+                    {
+                        return JsonConvert.DeserializeObject<TimeEstimatesResponse>(result).Times;
+                    }
+                    catch (Exception) { }
+                }
+
                 return null;
             }).AsAsyncOperation();
         }
@@ -135,12 +157,22 @@ namespace Uwapi
         /// <param name="offset">Offset the list of returned results by this amount. Default is zero</param>
         /// <param name="limit">Number of items to retrieve. Default is 5, maximum is 100</param>
         /// <returns></returns>
-        public IAsyncOperation<UserHistory> GetUserActivitiesAsync(int offset, int limit)
+        public IAsyncOperation<UserActivities> GetUserActivitiesAsync(int offset, int limit, string accessToken)
         {
-            return Task.Run<UserHistory>(async () =>
+            return Task.Run<UserActivities>(async () =>
             {
                 string parameter = string.Format("offset={0}&limit={1}", offset, limit);
-                string result = await this.GetResponseJsonAsync(UserActivityEndpoint, parameter);
+                string result = await this.GetResponseJsonAsync(UserActivityEndpoint, parameter, accessToken);
+
+                if (!string.IsNullOrWhiteSpace(result))
+                {
+                    try
+                    {
+                        return JsonConvert.DeserializeObject<UserActivities>(result);
+                    }
+                    catch (Exception) { }
+                }
+
                 return null;
             }).AsAsyncOperation();
         }
@@ -149,13 +181,167 @@ namespace Uwapi
         /// The User Profile endpoint returns information about the Uber user that has authorized with the application.
         /// </summary>
         /// <returns></returns>
-        public IAsyncOperation<UserProfile> GetUserProfileAsync()
+        public IAsyncOperation<UserProfile> GetUserProfileAsync(string accessToken)
         {
             return Task.Run<UserProfile>(async () =>
             {
-                string result = await this.GetResponseJsonAsync(UserProfileEndpoint);
+                string result = await this.GetResponseJsonAsync(UserProfileEndpoint, accessToken: accessToken);
+
+                if (!string.IsNullOrWhiteSpace(result))
+                {
+                    try
+                    {
+                        return JsonConvert.DeserializeObject<UserProfile>(result);
+                    }
+                    catch (Exception) { }
+                }
+
                 return null;
             }).AsAsyncOperation();
         }
+
+        #endregion Uber Endpoints
+
+        #region Http stuff
+
+        /// <summary>
+        /// Performs a request to the Uber API
+        /// </summary>
+        /// <param name="endpoint">The endpoint that is being called.</param>
+        /// <param name="parameter">The parameters to be passed to the request.</param>
+        /// <param name="accessToken">The access token for authorizing the request.</param>
+        /// <returns>The JSON result of the request.</returns>
+        private IAsyncOperation<string> GetResponseJsonAsync(string endpoint, IList<KeyValuePair<string, string>> parameters = null, string accessToken = null)
+        {
+            return Task.Run<string>(async () =>
+            {
+                // Try the request, if any exception return an empty string
+                try
+                {
+                    HttpClient client = new HttpClient();
+
+                    // If thers an access token then include it in the header of the request
+                    if (string.IsNullOrWhiteSpace(accessToken))
+                    {
+                        client.DefaultRequestHeaders.Add(new KeyValuePair<string, string>("Authorization", string.Format("Bearer {0}", accessToken)));
+                    }
+
+                    string baseURL = string.Format("https://api.uber.com/{0}", endpoint);
+                    parameters.Add(new KeyValuePair<string, string>("server_token", this.uberServerToken));
+
+                    return await (new HttpClient()).GetStringAsync(new Uri(AppendParameterToUrl(baseURL, parameters)));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                }
+
+                return string.Empty;
+            }).AsAsyncOperation();
+        }
+
+        /// <summary>
+        /// Encodes the parameter, then append it to the url
+        /// </summary>
+        /// <param name="baseURL">The base url</param>
+        /// <param name="parameters">The parameters</param>
+        /// <returns>The url with the encoded parameters appended to it</returns>
+        private static string AppendParameterToUrl(string baseURL, IList<KeyValuePair<string, string>> parameters, bool encodeParameters = true)
+        {
+            StringBuilder url = new StringBuilder(baseURL);
+
+            // Setup parameters
+            if (parameters != null && parameters.Any())
+            {
+                // If no Question mark
+                if (!baseURL.EndsWith("?"))
+                {
+                    url.Append("?");
+                }
+
+                StringBuilder _params = new StringBuilder();
+
+                foreach (var parameter in parameters)
+                {
+                    if (encodeParameters)
+                    {
+                        _params.AppendFormat("&{0}={1}", parameter.Key, Uri.EscapeUriString(parameter.Value));
+                    }
+                    else
+                    {
+                        _params.AppendFormat("&{0}={1}", parameter.Key, parameter.Value);
+                    }
+                }
+
+                url.Append(_params.Remove(0, 1).ToString());
+            }
+
+            return url.ToString();
+        }
+
+        /// <summary>
+        /// Get the url that the user will use to login to there uber account and then authorize your app.
+        /// </summary>
+        /// <param name="scope">Comma delimited list of grant scopes you would like to have permission to access on behalf of the user.</param>
+        /// <param name="state">State which will be passed back to you to prevent tampering.</param>
+        /// <returns></returns>
+        public Uri GetAuthorizationURL(string scope, string state)
+        {
+            StringBuilder parameters = new StringBuilder("");
+
+            if (!string.IsNullOrWhiteSpace(this.uberClientId))
+            {
+                parameters.AppendFormat("&client_id={0}", this.uberClientId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(scope))
+            {
+                parameters.AppendFormat("&scope ={0}", scope);
+            }
+
+            if (!string.IsNullOrWhiteSpace(state))
+            {
+                parameters.AppendFormat("&state ={0}", state);
+            }
+
+            if (!string.IsNullOrWhiteSpace(this.uberRedirectUrl))
+            {
+                parameters.AppendFormat("&redirect_uri={0}", this.uberRedirectUrl);
+            }
+
+            string url = "https://login.uber.com/oauth/authorize?response_type=code{0}";
+            return new Uri(string.Format(url, Uri.EscapeDataString(parameters.ToString())));
+        }
+
+        public IAsyncOperation<string> GetAccessToken(string authorizationCode)
+        {
+            return Task.Run<string>(async () =>
+            {
+                // Try the request, if any exception return an empty string
+                try
+                {
+                    var requestData = new HttpFormUrlEncodedContent(new[] 
+                    {
+                        new KeyValuePair<string, string>("client_secret", this.uberServerToken),
+                        new KeyValuePair<string, string>("client_id", this.uberClientId),
+                        new KeyValuePair<string, string>("grant_type", "authorization_code"),
+                        new KeyValuePair<string, string>("redirect_uri", this.uberRedirectUrl),
+                        new KeyValuePair<string, string>("code", authorizationCode)
+                    });
+
+                    HttpResponseMessage response = await (new HttpClient()).PostAsync(new Uri("https://login.uber.com/oauth/token"), requestData);
+
+                    var responseContent = response.Content;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                }
+
+                return string.Empty;
+            }).AsAsyncOperation();
+        }
+
+        #endregion Http stuff
     }
 }
