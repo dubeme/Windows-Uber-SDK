@@ -41,6 +41,8 @@
     <TargetPlatform Include="Windows, Version=8.1" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Model\UberAccessScope.cs" />
+    <Compile Include="Model\UberAccessToken.cs" />
     <Compile Include="Model\UserActivities.cs" />
     <Compile Include="Model\TimeEstimates.cs" />
     <Compile Include="Model\UberLocation.cs" />
@@ -53,7 +55,6 @@
     <Compile Include="ResponseModel\ProductTypeResponse.cs" />
     <Compile Include="ResponseModel\TimeEstimatesResponse.cs" />
     <Compile Include="UberClient.cs" />
-    <Compile Include="UberOauth2Client.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json">

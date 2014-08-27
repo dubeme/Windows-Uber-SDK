@@ -1,12 +1,12 @@
 ﻿namespace Uwapi.Model
 {
-    public class AccessTokenResponse
+    public sealed class UberAccessToken
     {
         /// <summary>
         /// The access token to be used for making requests
         /// </summary>
         [Newtonsoft.Json.JsonProperty(PropertyName = "access_token")]
-        public string AccessToken { get; set; }
+        public string Token { get; set; }
 
         /// <summary>
         /// The type of token

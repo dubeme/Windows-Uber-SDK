@@ -16,6 +16,14 @@ namespace Uwapi
     /// </summary>
     public sealed class UberClient
     {
+        #region Constants
+
+        private const string HISTORY_SCOPE = "history";
+        private const string PROFILE_SCOPE = "profile";
+        private const string PROFILE_HISTORY_SCOPE = "history,profile";
+
+        #endregion Constants
+
         #region Endpoints
 
         private const string ProductTypesEndpoint = "v1/products";
@@ -145,12 +153,12 @@ namespace Uwapi
 
                 if (!string.IsNullOrWhiteSpace(customerUUID))
                 {
-                    parameters.Add(new KeyValuePair<string,string>("customer_uuid", customerUUID));
+                    parameters.Add(new KeyValuePair<string, string>("customer_uuid", customerUUID));
                 }
 
                 if (!string.IsNullOrWhiteSpace(productId))
                 {
-                    parameters.Add(new KeyValuePair<string,string>("product_id", productId));
+                    parameters.Add(new KeyValuePair<string, string>("product_id", productId));
                 }
 
                 string result = await this.GetResponseJsonAsync(TimeEstimatesEndpoint, parameters);
@@ -178,9 +186,11 @@ namespace Uwapi
         {
             return Task.Run<UserActivities>(async () =>
             {
+                // Force to be within [5, 100]
+                limit = Math.Min(Math.Max(5, limit), 100);
                 List<KeyValuePair<string, string>> parameters = new List<KeyValuePair<string, string>>
                 {
-                    new KeyValuePair<string, string>("offset",offset.ToString()),
+                    new KeyValuePair<string, string>("offset",Math.Max(0, offset).ToString()),
                     new KeyValuePair<string, string>("limit",limit.ToString())
                 };
 
@@ -207,7 +217,7 @@ namespace Uwapi
         {
             return Task.Run<UserProfile>(async () =>
             {
-                string result = await this.GetResponseJsonAsync(UserProfileEndpoint, accessToken: accessToken);
+                string result = await this.GetResponseJsonAsync(UserProfileEndpoint, accessToken: accessToken, ignoreParameters: true);
 
                 if (!string.IsNullOrWhiteSpace(result))
                 {
@@ -233,29 +243,37 @@ namespace Uwapi
         /// <param name="parameter">The parameters to be passed to the request.</param>
         /// <param name="accessToken">The access token for authorizing the request.</param>
         /// <returns>The JSON result of the request.</returns>
-        private IAsyncOperation<string> GetResponseJsonAsync(string endpoint, IList<KeyValuePair<string, string>> parameters = null, string accessToken = null)
+        private IAsyncOperation<string> GetResponseJsonAsync(string endpoint, IList<KeyValuePair<string, string>> parameters = null, string accessToken = null, bool ignoreParameters = false)
         {
             return Task.Run<string>(async () =>
             {
                 // Try the request, if any exception return an empty string
                 try
                 {
-                    HttpClient client = new HttpClient();
-
-                    // If thers an access token then include it in the header of the request
-                    if (string.IsNullOrWhiteSpace(accessToken))
+                    if (!ignoreParameters && parameters == null)
                     {
-                        client.DefaultRequestHeaders.Add(new KeyValuePair<string, string>("Authorization", string.Format("Bearer {0}", accessToken)));
+                        parameters = new List<KeyValuePair<string, string>>
+                        {
+                            new KeyValuePair<string, string>("server_token", this.uberServerToken)
+                        };
                     }
-
-                    // Add the Server Token
-                    parameters.Add(new KeyValuePair<string, string>("server_token", this.uberServerToken));
 
                     // The base url
                     string baseURL = string.Format("https://api.uber.com/{0}", endpoint);
 
+                    HttpClient client = new HttpClient(new Windows.Web.Http.Filters.HttpBaseProtocolFilter
+                    {
+                        AllowUI = false
+                    });
+
+                    // If thers an access token then include it in the header of the request
+                    if (!string.IsNullOrWhiteSpace(accessToken))
+                    {
+                        client.DefaultRequestHeaders.Authorization = new Windows.Web.Http.Headers.HttpCredentialsHeaderValue("Bearer", accessToken);
+                    }
+
                     // Make the request and return what ever the server returns
-                    return await (new HttpClient()).GetStringAsync(new Uri(AppendParameterToUrl(baseURL, parameters)));
+                    return await client.GetStringAsync(new Uri(AppendParameterToUrl(baseURL, parameters)));
                 }
                 catch (Exception ex)
                 {
@@ -272,7 +290,7 @@ namespace Uwapi
         /// <param name="scope">Comma delimited list of grant scopes you would like to have permission to access on behalf of the user.</param>
         /// <param name="state">State which will be passed back to you to prevent tampering.</param>
         /// <returns></returns>
-        public Uri GetAuthorizationURL(string scope, string state)
+        public Uri GetAuthorizationURL(UberAccessScope scope, string state)
         {
             List<KeyValuePair<string, string>> parameters = new List<KeyValuePair<string, string>>();
 
@@ -281,9 +299,20 @@ namespace Uwapi
                 parameters.Add(new KeyValuePair<string, string>("client_id", this.uberClientId));
             }
 
-            if (!string.IsNullOrWhiteSpace(scope))
+            if (scope != UberAccessScope.Unknown)
             {
-                parameters.Add(new KeyValuePair<string, string>("scope", scope));
+                switch (scope)
+                {
+                    case UberAccessScope.Profile:
+                        parameters.Add(new KeyValuePair<string, string>("scope", PROFILE_SCOPE));
+                        break;
+                    case UberAccessScope.History:
+                        parameters.Add(new KeyValuePair<string, string>("scope", HISTORY_SCOPE));
+                        break;
+                    case UberAccessScope.History | UberAccessScope.Profile:
+                        parameters.Add(new KeyValuePair<string, string>("scope", PROFILE_HISTORY_SCOPE));
+                        break;
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(state))
@@ -307,9 +336,9 @@ namespace Uwapi
         /// </summary>
         /// <param name="authorizationCode">The authorization code returned by Uber</param>
         /// <returns>An object representing the access token</returns>
-        public IAsyncOperation<AccessTokenResponse> ExchangeAuthorizationCodeForAccessToken(string authorizationCode)
+        public IAsyncOperation<UberAccessToken> ExchangeAuthorizationCodeForAccessToken(string authorizationCode)
         {
-            return Task.Run<AccessTokenResponse>(async () =>
+            return Task.Run<UberAccessToken>(async () =>
             {
                 try
                 {
@@ -323,7 +352,7 @@ namespace Uwapi
                     });
 
                     HttpResponseMessage response = await (new HttpClient()).PostAsync(new Uri("https://login.uber.com/oauth/token"), requestData);
-                    JsonConvert.DeserializeObject<AccessTokenResponse>(await response.Content.ReadAsStringAsync());
+                    return JsonConvert.DeserializeObject<UberAccessToken>(await response.Content.ReadAsStringAsync());
                 }
                 catch (Exception ex)
                 {
@@ -339,9 +368,9 @@ namespace Uwapi
         /// </summary>
         /// <param name="refreshToken">The refresh token. This is part of the access token object</param>
         /// <returns>A new access token.</returns>
-        public IAsyncOperation<AccessTokenResponse> RefreshAccessToken(string refreshToken)
+        public IAsyncOperation<UberAccessToken> RefreshAccessToken(string refreshToken)
         {
-            return Task.Run<AccessTokenResponse>(async () =>
+            return Task.Run<UberAccessToken>(async () =>
             {
                 try
                 {
@@ -355,7 +384,7 @@ namespace Uwapi
                     });
 
                     HttpResponseMessage response = await (new HttpClient()).PostAsync(new Uri("https://login.uber.com/oauth/token"), requestData);
-                    JsonConvert.DeserializeObject<AccessTokenResponse>(await response.Content.ReadAsStringAsync());
+                    JsonConvert.DeserializeObject<UberAccessToken>(await response.Content.ReadAsStringAsync());
                 }
                 catch (Exception ex)
                 {
@@ -391,7 +420,7 @@ namespace Uwapi
                 {
                     if (encodeParameters)
                     {
-                        _params.AppendFormat("&{0}={1}", parameter.Key, Uri.EscapeDataString(parameter.Value));
+                        _params.AppendFormat("&{0}={1}", parameter.Key, Uri.EscapeDataString(parameter.Value.Replace(" ","%20")));
                     }
                     else
                     {
