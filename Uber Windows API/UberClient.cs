@@ -67,8 +67,13 @@ namespace Uwapi
         {
             return Task.Run<IList<ProductType>>(async () =>
             {
-                string parameter = string.Format("latitude={0}&longitude={1}", latitude, longitude);
-                string result = await this.GetResponseJsonAsync(ProductTypesEndpoint, parameter);
+                List<KeyValuePair<string, string>> parameters = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("latitude",latitude.ToString()),
+                    new KeyValuePair<string, string>("longitude",longitude.ToString())
+                };
+
+                string result = await this.GetResponseJsonAsync(ProductTypesEndpoint, parameters);
 
                 if (!string.IsNullOrWhiteSpace(result))
                 {
@@ -95,8 +100,14 @@ namespace Uwapi
         {
             return Task.Run<IList<PriceEstimates>>(async () =>
             {
-                string format = "start_latitude={0}&start_longitude={1}&end_latitude={2}&end_longitude={3}";
-                string parameters = string.Format(format, startLatitude, startLongitude, endLatitude, endLongitude);
+                List<KeyValuePair<string, string>> parameters = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("start_latitude",startLatitude.ToString()),
+                    new KeyValuePair<string, string>("start_longitude",startLongitude.ToString()),
+                    new KeyValuePair<string, string>("end_latitude",endLatitude.ToString()),
+                    new KeyValuePair<string, string>("end_longitude",endLongitude.ToString())
+                };
+
                 string result = await this.GetResponseJsonAsync(PricetEstimatsEndpoint, parameters);
 
                 if (!string.IsNullOrWhiteSpace(result))
@@ -124,19 +135,23 @@ namespace Uwapi
         {
             return Task.Run<IList<TimeEstimates>>(async () =>
             {
-                StringBuilder parameter = new StringBuilder(string.Format("start_latitude={0}&start_longitude={1}", startLatitude, startLongitude));
+                List<KeyValuePair<string, string>> parameters = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("start_latitude",startLatitude.ToString()),
+                    new KeyValuePair<string, string>("start_longitude",startLongitude.ToString())
+                };
 
                 if (!string.IsNullOrWhiteSpace(customerUUID))
                 {
-                    parameter.AppendFormat("&customer_uuid={0}", customerUUID);
+                    parameters.Add(new KeyValuePair<string,string>("customer_uuid", customerUUID));
                 }
 
                 if (!string.IsNullOrWhiteSpace(productId))
                 {
-                    parameter.AppendFormat("&product_id={0}", productId);
+                    parameters.Add(new KeyValuePair<string,string>("product_id", productId));
                 }
 
-                string result = await this.GetResponseJsonAsync(TimeEstimatesEndpoint, parameter.ToString());
+                string result = await this.GetResponseJsonAsync(TimeEstimatesEndpoint, parameters);
 
                 if (!string.IsNullOrWhiteSpace(result))
                 {
@@ -161,8 +176,13 @@ namespace Uwapi
         {
             return Task.Run<UserActivities>(async () =>
             {
-                string parameter = string.Format("offset={0}&limit={1}", offset, limit);
-                string result = await this.GetResponseJsonAsync(UserActivityEndpoint, parameter, accessToken);
+                List<KeyValuePair<string, string>> parameters = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("offset",offset.ToString()),
+                    new KeyValuePair<string, string>("limit",limit.ToString())
+                };
+
+                string result = await this.GetResponseJsonAsync(UserActivityEndpoint, parameters, accessToken);
 
                 if (!string.IsNullOrWhiteSpace(result))
                 {
@@ -226,9 +246,13 @@ namespace Uwapi
                         client.DefaultRequestHeaders.Add(new KeyValuePair<string, string>("Authorization", string.Format("Bearer {0}", accessToken)));
                     }
 
-                    string baseURL = string.Format("https://api.uber.com/{0}", endpoint);
+                    // Add the Server Token
                     parameters.Add(new KeyValuePair<string, string>("server_token", this.uberServerToken));
 
+                    // The base url
+                    string baseURL = string.Format("https://api.uber.com/{0}", endpoint);
+
+                    // Make the request and return what ever the server returns
                     return await (new HttpClient()).GetStringAsync(new Uri(AppendParameterToUrl(baseURL, parameters)));
                 }
                 catch (Exception ex)
@@ -287,30 +311,32 @@ namespace Uwapi
         /// <returns></returns>
         public Uri GetAuthorizationURL(string scope, string state)
         {
-            StringBuilder parameters = new StringBuilder("");
+            List<KeyValuePair<string, string>> parameters = new List<KeyValuePair<string, string>>();
 
             if (!string.IsNullOrWhiteSpace(this.uberClientId))
             {
-                parameters.AppendFormat("&client_id={0}", this.uberClientId);
+                parameters.Add(new KeyValuePair<string, string>("client_id", this.uberClientId));
             }
 
             if (!string.IsNullOrWhiteSpace(scope))
             {
-                parameters.AppendFormat("&scope ={0}", scope);
+                parameters.Add(new KeyValuePair<string, string>("scope", scope));
             }
 
             if (!string.IsNullOrWhiteSpace(state))
             {
-                parameters.AppendFormat("&state ={0}", state);
+                parameters.Add(new KeyValuePair<string, string>("state", state));
             }
 
             if (!string.IsNullOrWhiteSpace(this.uberRedirectUrl))
             {
-                parameters.AppendFormat("&redirect_uri={0}", this.uberRedirectUrl);
+                parameters.Add(new KeyValuePair<string, string>("redirect_uri", this.uberRedirectUrl));
             }
 
-            string url = "https://login.uber.com/oauth/authorize?response_type=code{0}";
-            return new Uri(string.Format(url, Uri.EscapeDataString(parameters.ToString())));
+            parameters.Add(new KeyValuePair<string, string>("response_type", "code"));
+            string baseURL = "https://login.uber.com/oauth/authorize";
+
+            return new Uri(AppendParameterToUrl(baseURL, parameters));
         }
 
         public IAsyncOperation<string> GetAccessToken(string authorizationCode)
