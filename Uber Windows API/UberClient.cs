@@ -1,14 +1,13 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Net;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Uwapi.Model;
 using Uwapi.ResponseModel;
 using Windows.Foundation;
 using Windows.Web.Http;
-using System.Linq;
 
 namespace Uwapi
 {
@@ -32,6 +31,7 @@ namespace Uwapi
         private string uberServerToken = string.Empty;
         private string uberClientId = string.Empty;
         private string uberRedirectUrl = string.Empty;
+        private string uberClientSecret = string.Empty;
 
         #endregion Fields
 
@@ -46,11 +46,13 @@ namespace Uwapi
         ///     The URI we will redirect back to after an authorization by the resource owner. 
         ///     The base of the URI must match the redirect_uri used during the registration of your application.
         /// </param>
-        public UberClient(string serverToken, string clientId, string redirectURL)
+        /// <param name="clientSecret">The 40 character long super secret code for your app.</param>
+        public UberClient(string serverToken, string clientId, string redirectURL, string clientSecret)
         {
             this.uberServerToken = serverToken;
             this.uberClientId = clientId;
             this.uberRedirectUrl = redirectURL;
+            this.uberClientSecret = clientSecret;
         }
 
         #endregion Constructor
@@ -265,45 +267,6 @@ namespace Uwapi
         }
 
         /// <summary>
-        /// Encodes the parameter, then append it to the url
-        /// </summary>
-        /// <param name="baseURL">The base url</param>
-        /// <param name="parameters">The parameters</param>
-        /// <returns>The url with the encoded parameters appended to it</returns>
-        private static string AppendParameterToUrl(string baseURL, IList<KeyValuePair<string, string>> parameters, bool encodeParameters = true)
-        {
-            StringBuilder url = new StringBuilder(baseURL);
-
-            // Setup parameters
-            if (parameters != null && parameters.Any())
-            {
-                // If no Question mark
-                if (!baseURL.EndsWith("?"))
-                {
-                    url.Append("?");
-                }
-
-                StringBuilder _params = new StringBuilder();
-
-                foreach (var parameter in parameters)
-                {
-                    if (encodeParameters)
-                    {
-                        _params.AppendFormat("&{0}={1}", parameter.Key, Uri.EscapeUriString(parameter.Value));
-                    }
-                    else
-                    {
-                        _params.AppendFormat("&{0}={1}", parameter.Key, parameter.Value);
-                    }
-                }
-
-                url.Append(_params.Remove(0, 1).ToString());
-            }
-
-            return url.ToString();
-        }
-
-        /// <summary>
         /// Get the url that the user will use to login to there uber account and then authorize your app.
         /// </summary>
         /// <param name="scope">Comma delimited list of grant scopes you would like to have permission to access on behalf of the user.</param>
@@ -339,16 +302,20 @@ namespace Uwapi
             return new Uri(AppendParameterToUrl(baseURL, parameters));
         }
 
-        public IAsyncOperation<string> GetAccessToken(string authorizationCode)
+        /// <summary>
+        /// Get an access token to be used for making requests
+        /// </summary>
+        /// <param name="authorizationCode">The authorization code returned by Uber</param>
+        /// <returns>An object representing the access token</returns>
+        public IAsyncOperation<AccessTokenResponse> ExchangeAuthorizationCodeForAccessToken(string authorizationCode)
         {
-            return Task.Run<string>(async () =>
+            return Task.Run<AccessTokenResponse>(async () =>
             {
-                // Try the request, if any exception return an empty string
                 try
                 {
                     var requestData = new HttpFormUrlEncodedContent(new[] 
                     {
-                        new KeyValuePair<string, string>("client_secret", this.uberServerToken),
+                        new KeyValuePair<string, string>("client_secret", this.uberClientSecret),
                         new KeyValuePair<string, string>("client_id", this.uberClientId),
                         new KeyValuePair<string, string>("grant_type", "authorization_code"),
                         new KeyValuePair<string, string>("redirect_uri", this.uberRedirectUrl),
@@ -356,16 +323,86 @@ namespace Uwapi
                     });
 
                     HttpResponseMessage response = await (new HttpClient()).PostAsync(new Uri("https://login.uber.com/oauth/token"), requestData);
-
-                    var responseContent = response.Content;
+                    JsonConvert.DeserializeObject<AccessTokenResponse>(await response.Content.ReadAsStringAsync());
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine(ex.Message);
                 }
 
-                return string.Empty;
+                return null;
             }).AsAsyncOperation();
+        }
+
+        /// <summary>
+        /// Refresh an expired access token.
+        /// </summary>
+        /// <param name="refreshToken">The refresh token. This is part of the access token object</param>
+        /// <returns>A new access token.</returns>
+        public IAsyncOperation<AccessTokenResponse> RefreshAccessToken(string refreshToken)
+        {
+            return Task.Run<AccessTokenResponse>(async () =>
+            {
+                try
+                {
+                    var requestData = new HttpFormUrlEncodedContent(new[] 
+                    {
+                        new KeyValuePair<string, string>("client_secret", this.uberClientSecret),
+                        new KeyValuePair<string, string>("client_id", this.uberClientId),
+                        new KeyValuePair<string, string>("grant_type", "refresh_token"),
+                        new KeyValuePair<string, string>("redirect_uri", this.uberRedirectUrl),
+                        new KeyValuePair<string, string>("refresh_token", refreshToken)
+                    });
+
+                    HttpResponseMessage response = await (new HttpClient()).PostAsync(new Uri("https://login.uber.com/oauth/token"), requestData);
+                    JsonConvert.DeserializeObject<AccessTokenResponse>(await response.Content.ReadAsStringAsync());
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(ex.Message);
+                }
+
+                return null;
+            }).AsAsyncOperation();
+        }
+
+        /// <summary>
+        /// Encodes the parameter, then append it to the url
+        /// </summary>
+        /// <param name="baseURL">The base url</param>
+        /// <param name="parameters">The parameters</param>
+        /// <returns>The url with the encoded parameters appended to it</returns>
+        private static string AppendParameterToUrl(string baseURL, IList<KeyValuePair<string, string>> parameters, bool encodeParameters = true)
+        {
+            StringBuilder url = new StringBuilder(baseURL);
+
+            // Setup parameters
+            if (parameters != null && parameters.Any())
+            {
+                // If no Question mark
+                if (!baseURL.EndsWith("?"))
+                {
+                    url.Append("?");
+                }
+
+                StringBuilder _params = new StringBuilder();
+
+                foreach (var parameter in parameters)
+                {
+                    if (encodeParameters)
+                    {
+                        _params.AppendFormat("&{0}={1}", parameter.Key, Uri.EscapeDataString(parameter.Value));
+                    }
+                    else
+                    {
+                        _params.AppendFormat("&{0}={1}", parameter.Key, parameter.Value);
+                    }
+                }
+
+                url.Append(_params.Remove(0, 1).ToString());
+            }
+
+            return url.ToString();
         }
 
         #endregion Http stuff
