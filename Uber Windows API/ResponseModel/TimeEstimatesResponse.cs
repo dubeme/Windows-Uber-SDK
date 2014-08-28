@@ -1,5 +1,8 @@
 ﻿namespace Uwapi.ResponseModel
 {
+    /// <summary>
+    /// Represents the time estimates returned by uber.
+    /// </summary>
     public sealed class TimeEstimatesResponse
     {
         /// <summary>

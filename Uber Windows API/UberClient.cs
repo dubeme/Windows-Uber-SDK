@@ -136,10 +136,10 @@ namespace Uwapi
         /// <summary>
         /// The Time Estimates endpoint returns ETAs for all products offered at a given location, with the responses expressed as integers in seconds.
         /// </summary>
-        /// <param name="start_latitude">Latitude component</param>
-        /// <param name="start_longitude">Longitude component</param>
-        /// <param name="customer_uuid">Unique customer identifier to be used for experience customization</param>
-        /// <param name="product_id">Unique identifier representing a specific product for a given latitude & longitude</param>
+        /// <param name="startLatitude">Latitude component</param>
+        /// <param name="startLongitude">Longitude component</param>
+        /// <param name="customerUUID">Unique customer identifier to be used for experience customization</param>
+        /// <param name="productId">Unique identifier representing a specific product for a given latitude and longitude</param>
         /// <returns></returns>
         public IAsyncOperation<IList<TimeEstimates>> GetTimeEstimatesAsync(float startLatitude, float startLongitude, string customerUUID, string productId)
         {
@@ -181,6 +181,7 @@ namespace Uwapi
         /// </summary>
         /// <param name="offset">Offset the list of returned results by this amount. Default is zero</param>
         /// <param name="limit">Number of items to retrieve. Default is 5, maximum is 100</param>
+        /// <param name="accessToken">The access token for making the request</param>
         /// <returns></returns>
         public IAsyncOperation<UserActivities> GetUserActivitiesAsync(int offset, int limit, string accessToken)
         {
@@ -240,8 +241,9 @@ namespace Uwapi
         /// Performs a request to the Uber API
         /// </summary>
         /// <param name="endpoint">The endpoint that is being called.</param>
-        /// <param name="parameter">The parameters to be passed to the request.</param>
+        /// <param name="parameters">The parameters to be passed to the request.</param>
         /// <param name="accessToken">The access token for authorizing the request.</param>
+        /// <param name="ignoreParameters">Indicates whether the url should have a parameter.</param>
         /// <returns>The JSON result of the request.</returns>
         private IAsyncOperation<string> GetResponseJsonAsync(string endpoint, IList<KeyValuePair<string, string>> parameters = null, string accessToken = null, bool ignoreParameters = false)
         {
@@ -400,6 +402,7 @@ namespace Uwapi
         /// </summary>
         /// <param name="baseURL">The base url</param>
         /// <param name="parameters">The parameters</param>
+        /// <param name="encodeParameters">Indicates whether the parameters should be encoded</param>
         /// <returns>The url with the encoded parameters appended to it</returns>
         private static string AppendParameterToUrl(string baseURL, IList<KeyValuePair<string, string>> parameters, bool encodeParameters = true)
         {

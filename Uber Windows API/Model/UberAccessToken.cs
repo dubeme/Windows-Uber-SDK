@@ -1,5 +1,8 @@
 ﻿namespace Uwapi.Model
 {
+    /// <summary>
+    /// Represents the uber access token
+    /// </summary>
     public sealed class UberAccessToken
     {
         /// <summary>

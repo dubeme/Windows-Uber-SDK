@@ -6,7 +6,7 @@
     public sealed class TimeEstimates
     {
         /// <summary>
-        /// Unique identifier representing a specific product for a given latitude & longitude. 
+        /// Unique identifier representing a specific product for a given latitude and longitude. 
         /// For example, uberX in San Francisco will have a different product_id than uberX in Los Angeles.
         /// </summary>
         [Newtonsoft.Json.JsonProperty(PropertyName = "product_id")]

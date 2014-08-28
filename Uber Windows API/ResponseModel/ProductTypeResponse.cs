@@ -1,5 +1,8 @@
 ﻿namespace Uwapi.ResponseModel
 {
+    /// <summary>
+    /// Represents the product type returned by uber.
+    /// </summary>
     public sealed class ProductTypeResponse
     {
         /// <summary>

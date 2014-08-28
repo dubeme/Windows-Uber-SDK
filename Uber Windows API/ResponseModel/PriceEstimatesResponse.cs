@@ -1,5 +1,8 @@
 ﻿namespace Uwapi.ResponseModel
 {
+    /// <summary>
+    /// Represents the price estimate returned by uber.
+    /// </summary>
     public sealed class PriceEstimatesResponse
     {
         /// <summary>
