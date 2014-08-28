@@ -1,4 +1,4 @@
-uwapi
+wuber
 =====
 
-A windows component for consuming the uber API
+A windows runtime component for consuming the uber API
